@@ -4,24 +4,27 @@ const { Pool } = require("pg");
 const app = express();
 const port = process.env.PORT || 3000;
 
-// Kết nối PostgreSQL Railway
+app.use(express.urlencoded({ extended: true }));
+app.use(express.json());
+
+// PostgreSQL Railway
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: { rejectUnauthorized: false }
 });
 
-// ✅ ROUTE TEST
+// ✅ TEST SERVER
 app.get("/", (req, res) => {
   res.send("Smart Door API is running");
 });
 
-// ✅ ROUTE GHI TRẠNG THÁI (CHỐNG SPAM)
-app.get("/log", async (req, res) => {
-  const state = req.query.state;
+// ✅ ESP32 POST STATE (CHỐNG SPAM)
+app.post("/state", async (req, res) => {
+  const state = req.body.state;
   if (!state) return res.status(400).send("Missing state");
 
   try {
-    const result = await pool.query(
+    await pool.query(
       `
       INSERT INTO door_log (state)
       SELECT $1
