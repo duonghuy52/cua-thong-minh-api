@@ -1,34 +1,82 @@
-<div class="grid grid-cols-1 md:grid-cols-2 gap-8">
-    <div class="bg-emerald-50 p-10 rounded-[35px] text-center border-2 border-emerald-100 shadow-sm">
-        <p class="text-emerald-600 font-black text-xl mb-6 uppercase tracking-wider">Số lần MỞ</p>
-        <p id="openCnt" class="text-6xl md:text-8xl font-black text-emerald-700 italic drop-shadow-sm">0</p>
-    </div>
-    <div class="bg-rose-50 p-10 rounded-[35px] text-center border-2 border-rose-100 shadow-sm">
-        <p class="text-rose-600 font-black text-xl mb-6 uppercase tracking-wider">Số lần ĐÓNG</p>
-        <p id="closeCnt" class="text-6xl md:text-8xl font-black text-rose-700 italic drop-shadow-sm">0</p>
-    </div>
-</div>
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Door Pro - Minimalist</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+</head>
+<body class="bg-gray-50 text-gray-800 min-h-screen flex flex-col p-4 md:p-10 font-sans">
+    
+    <header class="text-center mb-10">
+        <h1 class="text-4xl font-black text-blue-600 tracking-tighter italic">SMART DOOR CONTROL</h1>
+        <div class="h-1.5 w-24 bg-blue-600 mx-auto mt-2 rounded-full"></div>
+    </header>
 
-<script>
-    // Các phần khai báo ngày và MQTT
-    async function getStats() {
-        const selectedDate = document.getElementById('datePicker').value;
-        try {
-            const res = await fetch(`/api/door/stats?date=${selectedDate}`);
-            const data = await res.json();         
-            if(data.success) {
-                const openEl = document.getElementById('openCnt');
-                const closeEl = document.getElementById('closeCnt');
-                // Hiển thị trực tiếp dữ liệu số từ Server
-                openEl.innerText = data.stats.opens;
-                closeEl.innerText = data.stats.closes;
-                openEl.style.fontSize = "";
-                closeEl.style.fontSize = "";
-            }
-        } catch (error) {
-            console.error("Lỗi truy vấn dữ liệu:", error);
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto w-full mb-12">
+        <button onclick="sendCmd('OPEN')" class="bg-white hover:bg-emerald-50 border-4 border-emerald-500 active:scale-95 transition-all p-16 rounded-[40px] shadow-2xl flex items-center justify-center">
+            <span class="text-5xl md:text-6xl font-black text-emerald-600 italic">OPEN</span>
+        </button>
+        <button onclick="sendCmd('CLOSE')" class="bg-white hover:bg-rose-50 border-4 border-rose-500 active:scale-95 transition-all p-16 rounded-[40px] shadow-2xl flex items-center justify-center">
+            <span class="text-5xl md:text-6xl font-black text-rose-600 italic">CLOSE</span>
+        </button>
+    </div>
+
+    <div class="max-w-4xl mx-auto w-full bg-white p-8 rounded-[40px] shadow-2xl border border-gray-100">
+        <div class="flex flex-col md:flex-row justify-between items-center mb-10 gap-4 text-center md:text-left">
+            <h2 class="text-2xl font-black text-gray-700 uppercase tracking-widest italic border-l-8 border-blue-500 pl-4">📊 Thống kê dữ liệu</h2>
+            
+            <div class="flex items-center gap-3 bg-gray-100 px-5 py-3 rounded-2xl shadow-inner">
+                <span class="font-bold text-gray-500 uppercase text-sm">Chọn ngày:</span>
+                <input type="date" id="datePicker" onchange="getStats()" class="bg-transparent font-black text-blue-600 outline-none cursor-pointer">
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <div class="bg-emerald-50 p-10 rounded-[35px] text-center border-2 border-emerald-100 shadow-sm">
+                <p class="text-emerald-600 font-black text-xl mb-6 uppercase tracking-wider">Số lần MỞ</p>
+                <p id="openCnt" class="text-6xl md:text-8xl font-black text-emerald-700 italic drop-shadow-sm">0</p>
+            </div>
+            <div class="bg-rose-50 p-10 rounded-[35px] text-center border-2 border-rose-100 shadow-sm">
+                <p class="text-rose-600 font-black text-xl mb-6 uppercase tracking-wider">Số lần ĐÓNG</p>
+                <p id="closeCnt" class="text-6xl md:text-8xl font-black text-rose-700 italic drop-shadow-sm">0</p>
+            </div>
+        </div>
+    </div>
+
+    <footer class="mt-auto pt-10 text-center text-gray-400 font-bold uppercase tracking-tighter text-sm">
+        Smart Door IoT Project &copy; 2025
+    </footer>
+
+    <script>
+        document.getElementById('datePicker').valueAsDate = new Date();
+
+        const client = mqtt.connect('wss://broker.hivemq.com:8884/mqtt');
+        
+        function sendCmd(cmd) {
+            client.publish('door/command', cmd);
+            console.log("Đã gửi lệnh: " + cmd);
         }
-    }
-    window.onload = getStats;
-    setInterval(getStats, 15000);
-</script>
+
+        async function getStats() {
+            const selectedDate = document.getElementById('datePicker').value;
+            try {
+                const res = await fetch(`/api/door/stats?date=${selectedDate}`);
+                const data = await res.json();
+                
+                if(data.success) {
+                    // Cập nhật con số trực tiếp từ server (0 hoặc số lần cụ thể)
+                    document.getElementById('openCnt').innerText = data.stats.opens;
+                    document.getElementById('closeCnt').innerText = data.stats.closes;
+                }
+            } catch (error) {
+                console.error("Lỗi truy vấn dữ liệu:", error);
+            }
+        }
+
+        window.onload = getStats;
+        setInterval(getStats, 15000);
+    </script>
+</body>
+</html>
