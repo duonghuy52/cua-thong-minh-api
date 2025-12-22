@@ -3,60 +3,92 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Điều Khiển Cửa Thông Minh</title>
+    <title>Smart Door Pro - Minimalist</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
 </head>
-<body class="bg-slate-900 text-white min-h-screen flex flex-col p-4 md:p-10">
+<body class="bg-gray-50 text-gray-800 min-h-screen flex flex-col p-4 md:p-10 font-sans">
+    
     <header class="text-center mb-10">
-        <h1 class="text-3xl font-bold text-blue-400">SMART DOOR CONTROL</h1>
+        <h1 class="text-4xl font-black text-blue-600 tracking-tighter italic">SMART DOOR CONTROL</h1>
+        <div class="h-1.5 w-24 bg-blue-600 mx-auto mt-2 rounded-full"></div>
     </header>
 
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl mx-auto w-full mb-10">
-        <button onclick="sendCmd('OPEN')" class="bg-emerald-600 hover:bg-emerald-500 active:scale-95 transition-all p-12 rounded-3xl shadow-xl flex flex-col items-center">
-            <span class="text-6xl mb-2">🔓</span>
-            <span class="text-2xl font-black">MỞ CỬA</span>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto w-full mb-12">
+        <button onclick="sendCmd('OPEN')" class="bg-white hover:bg-emerald-50 border-4 border-emerald-500 active:scale-95 transition-all p-16 rounded-[40px] shadow-2xl flex items-center justify-center">
+            <span class="text-5xl md:text-6xl font-black text-emerald-600 italic">OPEN</span>
         </button>
-        <button onclick="sendCmd('CLOSE')" class="bg-rose-600 hover:bg-rose-500 active:scale-95 transition-all p-12 rounded-3xl shadow-xl flex flex-col items-center">
-            <span class="text-6xl mb-2">🔒</span>
-            <span class="text-2xl font-black">ĐÓNG CỬA</span>
+        <button onclick="sendCmd('CLOSE')" class="bg-white hover:bg-rose-50 border-4 border-rose-500 active:scale-95 transition-all p-16 rounded-[40px] shadow-2xl flex items-center justify-center">
+            <span class="text-5xl md:text-6xl font-black text-rose-600 italic">CLOSE</span>
         </button>
     </div>
 
-    <div class="max-w-4xl mx-auto w-full bg-slate-800 p-8 rounded-3xl border border-slate-700 shadow-2xl">
-        <div class="flex justify-between items-center mb-6">
-            <h2 class="text-xl font-bold italic text-blue-300">📊 THỐNG KÊ HÔM NAY</h2>
-            <button onclick="getStats()" class="bg-blue-600 px-4 py-2 rounded-lg text-sm font-bold">Làm mới 🔄</button>
-        </div>
-        <div class="grid grid-cols-2 gap-4">
-            <div class="bg-slate-900 p-6 rounded-2xl text-center border border-slate-700">
-                <p class="text-emerald-400 font-bold mb-2">MỞ</p>
-                <p id="openCnt" class="text-6xl font-black italic">0</p>
+    <div class="max-w-4xl mx-auto w-full bg-white p-8 rounded-[40px] shadow-2xl border border-gray-100">
+        <div class="flex flex-col md:flex-row justify-between items-center mb-10 gap-4 text-center md:text-left">
+            <h2 class="text-2xl font-black text-gray-700 uppercase tracking-widest italic border-l-8 border-blue-500 pl-4">📊 Thống kê dữ liệu</h2>
+            
+            <div class="flex items-center gap-3 bg-gray-100 px-5 py-3 rounded-2xl shadow-inner">
+                <span class="font-bold text-gray-500 uppercase text-sm">Chọn ngày:</span>
+                <input type="date" id="datePicker" onchange="getStats()" class="bg-transparent font-black text-blue-600 outline-none cursor-pointer">
             </div>
-            <div class="bg-slate-900 p-6 rounded-2xl text-center border border-slate-700">
-                <p class="text-rose-400 font-bold mb-2">ĐÓNG</p>
-                <p id="closeCnt" class="text-6xl font-black italic">0</p>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <div class="bg-emerald-50 p-10 rounded-[35px] text-center border-2 border-emerald-100 shadow-sm">
+                <p class="text-emerald-600 font-black text-xl mb-6 uppercase tracking-wider">Số lần MỞ</p>
+                <p id="openCnt" class="text-6xl md:text-8xl font-black text-emerald-700 italic drop-shadow-sm">--</p>
+            </div>
+            <div class="bg-rose-50 p-10 rounded-[35px] text-center border-2 border-rose-100 shadow-sm">
+                <p class="text-rose-600 font-black text-xl mb-6 uppercase tracking-wider">Số lần ĐÓNG</p>
+                <p id="closeCnt" class="text-6xl md:text-8xl font-black text-rose-700 italic drop-shadow-sm">--</p>
             </div>
         </div>
     </div>
+
+    <footer class="mt-auto pt-10 text-center text-gray-400 font-bold uppercase tracking-tighter text-sm">
+        Smart Door IoT Project &copy; 2025
+    </footer>
 
     <script>
+        // Mặc định chọn ngày hôm nay
+        document.getElementById('datePicker').valueAsDate = new Date();
+
+        // Kết nối MQTT qua WebSocket (Broker công cộng HiveMQ)
         const client = mqtt.connect('wss://broker.hivemq.com:8884/mqtt');
+        
         function sendCmd(cmd) {
             client.publish('door/command', cmd);
-            alert("Đã gửi lệnh: " + cmd);
+            console.log("Đã gửi lệnh: " + cmd);
         }
 
         async function getStats() {
-            const res = await fetch('/api/door/stats');
-            const data = await res.json();
-            if(data.success) {
-                document.getElementById('openCnt').innerText = data.stats.opens;
-                document.getElementById('closeCnt').innerText = data.stats.closes;
+            const selectedDate = document.getElementById('datePicker').value;
+            try {
+                // Gọi API stats kèm tham số date
+                const res = await fetch(`/api/door/stats?date=${selectedDate}`);
+                const data = await res.json();
+                
+                if(data.success) {
+                    const openEl = document.getElementById('openCnt');
+                    const closeEl = document.getElementById('closeCnt');
+                    
+                    // Hiển thị số liệu hoặc thông báo "Không có"
+                    openEl.innerText = data.stats.opens;
+                    closeEl.innerText = data.stats.closes;
+
+                    // Tự động điều chỉnh kích thước chữ nếu nội dung dài ("Không có")
+                    openEl.style.fontSize = data.stats.opens === "Không có" ? "2.25rem" : "";
+                    closeEl.style.fontSize = data.stats.closes === "Không có" ? "2.25rem" : "";
+                }
+            } catch (error) {
+                console.error("Lỗi truy vấn dữ liệu:", error);
             }
         }
+
+        // Tự động cập nhật dữ liệu khi vừa tải trang
         window.onload = getStats;
-        setInterval(getStats, 10000); // Tự động cập nhật mỗi 10 giây
+        // Cập nhật lại mỗi 15 giây để làm mới thống kê
+        setInterval(getStats, 15000);
     </script>
 </body>
 </html>
