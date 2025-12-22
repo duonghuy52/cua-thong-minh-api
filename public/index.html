@@ -77,8 +77,8 @@
                     closeEl.innerText = data.stats.closes;
 
                     // Tự động điều chỉnh kích thước chữ nếu nội dung dài ("Không có")
-                    openEl.style.fontSize = data.stats.opens === "Không có" ? "2.25rem" : "";
-                    closeEl.style.fontSize = data.stats.closes === "Không có" ? "2.25rem" : "";
+                    openEl.style.fontSize = data.stats.opens === "0" ? "2.25rem" : "";
+                    closeEl.style.fontSize = data.stats.closes === "0" ? "2.25rem" : "";
                 }
             } catch (error) {
                 console.error("Lỗi truy vấn dữ liệu:", error);
