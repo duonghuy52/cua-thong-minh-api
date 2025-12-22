@@ -44,31 +44,30 @@ app.post("/api/door/status", async (req, res) => {
 // 2. API Thống kê: Nhận tham số ?date=YYYY-MM-DD từ giao diện
 app.get("/api/door/stats", async (req, res) => {
   try {
-    const queryDate = req.query.date; // Nhận ngày từ Web gửi qua fetch
+    const queryDate = req.query.date;
     let start = queryDate ? new Date(queryDate) : new Date();
     
-    // Thiết lập thời gian từ 00:00:00 đến 23:59:59 của ngày được chọn
     start.setHours(0, 0, 0, 0);
     const end = new Date(start);
     end.setHours(23, 59, 59, 999);
 
-    const logs = await Log.find({ 
-      timestamp: { $gte: start, $lte: end } 
+    const logs = await DoorLog.find({
+      timestamp: { $gte: start, $lte: end }
     });
 
     const opens = logs.filter(l => l.state === "OPEN").length;
     const closes = logs.filter(l => l.state === "CLOSE").length;
 
-    // Trả về số lượng hoặc chữ "Không có" theo yêu cầu của bạn
-    res.json({ 
-      success: true, 
-      stats: { 
-        opens: opens > 0 ? opens : "Không có", 
-        closes: closes > 0 ? closes : "Không có" 
-      } 
+    res.json({
+      success: true,
+      stats: {
+        // Gửi số lượng trực tiếp (nếu là 0 thì gửi 0)
+        opens: opens, 
+        closes: closes
+      }
     });
-  } catch (err) { 
-    res.status(500).json({ success: false, error: err.message }); 
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
   }
 });
 
