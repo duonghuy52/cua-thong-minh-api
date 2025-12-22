@@ -1,90 +1,52 @@
 const express = require("express");
 const mongoose = require("mongoose");
 const cors = require("cors");
+const path = require("path");
 
 const app = express();
 const port = process.env.PORT || 3000;
 
-// Middleware
-app.use(cors()); // Cho phép giao diện web truy cập API
+app.use(cors());
 app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(express.static('public')); // Dòng này cực kỳ quan trọng để hiện giao diện
 
-// --- KẾT NỐI MONGODB ---
-// Vercel sẽ lấy giá trị này từ Environment Variables mà bạn đã cài đặt
-const MONGODB_URI = process.env.MONGODB_URI;
+// Kết nối MongoDB qua biến môi trường
+mongoose.connect(process.env.MONGODB_URI)
+  .then(() => console.log("✅ MongoDB Connected"))
+  .catch(err => console.log(err));
 
-mongoose.connect(MONGODB_URI)
-  .then(() => console.log("✅ Connected to MongoDB Atlas"))
-  .catch((err) => console.error("❌ MongoDB Connection Error:", err));
-
-// --- ĐỊNH NGHĨA SCHEMA (Cấu trúc dữ liệu) ---
-const doorLogSchema = new mongoose.Schema({
-  state: { type: String, required: true }, // "OPEN" hoặc "CLOSE"
+const LogSchema = new mongoose.Schema({
+  state: String,
   timestamp: { type: Date, default: Date.now }
 });
+const Log = mongoose.model("DoorLog", LogSchema);
 
-const DoorLog = mongoose.model("DoorLog", doorLogSchema);
-
-// --- CÁC ĐƯỜNG DẪN (ROUTES) ---
-
-// 1. Kiểm tra Server
-app.get("/", (req, res) => {
-  res.send("Smart Door API with MongoDB is running...");
-});
-
-// 2. ESP32 Gửi trạng thái lên (POST)
+// API nhận trạng thái từ ESP32
 app.post("/api/door/status", async (req, res) => {
   const { state } = req.body;
-  if (!state) return res.status(400).send("Missing state");
-
   try {
-    // CHỐNG SPAM: Chỉ lưu nếu trạng thái mới khác với trạng thái gần nhất trong DB
-    const lastLog = await DoorLog.findOne().sort({ timestamp: -1 });
-
+    const lastLog = await Log.findOne().sort({ timestamp: -1 });
     if (!lastLog || lastLog.state !== state) {
-      const newLog = new DoorLog({ state: state.toUpperCase() });
-      await newLog.save();
-      return res.send("✅ State saved to MongoDB");
+      await new Log({ state }).save();
     }
-
-    res.send("ℹ️ State unchanged, not saved.");
-  } catch (err) {
-    console.error(err);
-    res.status(500).send("Database Error");
-  }
+    res.send("OK");
+  } catch (err) { res.status(500).send(err.message); }
 });
 
-// 3. Lấy thống kê số lần đóng/mở TRONG NGÀY (GET)
+// API Thống kê cho Web truy vấn
 app.get("/api/door/stats", async (req, res) => {
+  const startOfDay = new Date();
+  startOfDay.setHours(0, 0, 0, 0);
   try {
-    const startOfDay = new Date();
-    startOfDay.setHours(0, 0, 0, 0); // Lấy mốc 00:00:00 sáng nay
-
-    const endOfDay = new Date();
-    endOfDay.setHours(23, 59, 59, 999); // Lấy mốc 23:59:59 tối nay
-
-    const logsToday = await DoorLog.find({
-      timestamp: { $gte: startOfDay, $lte: endOfDay }
-    });
-
-    const openCount = logsToday.filter(log => log.state === "OPEN").length;
-    const closeCount = logsToday.filter(log => log.state === "CLOSE").length;
-
-    res.json({
-      success: true,
-      stats: {
-        opens: openCount,
-        closes: closeCount,
-        totalActions: logsToday.length
-      },
-      date: startOfDay.toLocaleDateString()
-    });
-  } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
-  }
+    const logs = await Log.find({ timestamp: { $gte: startOfDay } });
+    const opens = logs.filter(l => l.state === "OPEN").length;
+    const closes = logs.filter(l => l.state === "CLOSE").length;
+    res.json({ success: true, stats: { opens, closes } });
+  } catch (err) { res.status(500).json({ success: false }); }
 });
 
-app.listen(port, () => {
-  console.log(`🚀 Server is flying on port ${port}`);
+app.get("*", (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
+
+app.listen(port);
