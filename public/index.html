@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Điều Khiển Cửa Thông Minh</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+</head>
+<body class="bg-slate-900 text-white min-h-screen flex flex-col p-4 md:p-10">
+    <header class="text-center mb-10">
+        <h1 class="text-3xl font-bold text-blue-400">SMART DOOR CONTROL</h1>
+    </header>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl mx-auto w-full mb-10">
+        <button onclick="sendCmd('OPEN')" class="bg-emerald-600 hover:bg-emerald-500 active:scale-95 transition-all p-12 rounded-3xl shadow-xl flex flex-col items-center">
+            <span class="text-6xl mb-2">🔓</span>
+            <span class="text-2xl font-black">MỞ CỬA</span>
+        </button>
+        <button onclick="sendCmd('CLOSE')" class="bg-rose-600 hover:bg-rose-500 active:scale-95 transition-all p-12 rounded-3xl shadow-xl flex flex-col items-center">
+            <span class="text-6xl mb-2">🔒</span>
+            <span class="text-2xl font-black">ĐÓNG CỬA</span>
+        </button>
+    </div>
+
+    <div class="max-w-4xl mx-auto w-full bg-slate-800 p-8 rounded-3xl border border-slate-700 shadow-2xl">
+        <div class="flex justify-between items-center mb-6">
+            <h2 class="text-xl font-bold italic text-blue-300">📊 THỐNG KÊ HÔM NAY</h2>
+            <button onclick="getStats()" class="bg-blue-600 px-4 py-2 rounded-lg text-sm font-bold">Làm mới 🔄</button>
+        </div>
+        <div class="grid grid-cols-2 gap-4">
+            <div class="bg-slate-900 p-6 rounded-2xl text-center border border-slate-700">
+                <p class="text-emerald-400 font-bold mb-2">MỞ</p>
+                <p id="openCnt" class="text-6xl font-black italic">0</p>
+            </div>
+            <div class="bg-slate-900 p-6 rounded-2xl text-center border border-slate-700">
+                <p class="text-rose-400 font-bold mb-2">ĐÓNG</p>
+                <p id="closeCnt" class="text-6xl font-black italic">0</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const client = mqtt.connect('wss://broker.hivemq.com:8884/mqtt');
+        function sendCmd(cmd) {
+            client.publish('door/command', cmd);
+            alert("Đã gửi lệnh: " + cmd);
+        }
+
+        async function getStats() {
+            const res = await fetch('/api/door/stats');
+            const data = await res.json();
+            if(data.success) {
+                document.getElementById('openCnt').innerText = data.stats.opens;
+                document.getElementById('closeCnt').innerText = data.stats.closes;
+            }
+        }
+        window.onload = getStats;
+        setInterval(getStats, 10000); // Tự động cập nhật mỗi 10 giây
+    </script>
+</body>
+</html>
