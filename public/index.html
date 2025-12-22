@@ -51,7 +51,6 @@
 
     <script>
         document.getElementById('datePicker').valueAsDate = new Date();
-
         const client = mqtt.connect('wss://broker.hivemq.com:8884/mqtt');
         
         function sendCmd(cmd) {
@@ -64,17 +63,15 @@
             try {
                 const res = await fetch(`/api/door/stats?date=${selectedDate}`);
                 const data = await res.json();
-                
                 if(data.success) {
-                    // Cập nhật con số trực tiếp từ server (0 hoặc số lần cụ thể)
+                    // Hiển thị con số (0 hoặc số lần thực tế)
                     document.getElementById('openCnt').innerText = data.stats.opens;
                     document.getElementById('closeCnt').innerText = data.stats.closes;
                 }
             } catch (error) {
-                console.error("Lỗi truy vấn dữ liệu:", error);
+                console.error("Lỗi truy vấn:", error);
             }
         }
-
         window.onload = getStats;
         setInterval(getStats, 15000);
     </script>
