@@ -1,65 +1,32 @@
-const express = require("express");
-const mongoose = require("mongoose");
-const cors = require("cors");
-const path = require("path");
-
-const app = express();
-const port = process.env.PORT || 3000;
-
-app.use(cors());
-app.use(express.json());
-
-// KẾT NỐI MONGODB
-mongoose.connect(process.env.MONGODB_URI)
-  .then(() => console.log("✅ MongoDB Connected"))
-  .catch(err => console.log("❌ MongoDB Error:", err));
-
-const Log = mongoose.model("DoorLog", new mongoose.Schema({
-  state: String,
-  timestamp: { type: Date, default: Date.now }
-}));
-
-// API NHẬN TRẠNG THÁI TỪ ESP32
-app.post("/api/door/status", async (req, res) => {
-  const { state } = req.body;
-  try {
-    const lastLog = await Log.findOne().sort({ timestamp: -1 });
-    if (!lastLog || lastLog.state !== state.toUpperCase()) {
-      await new Log({ state: state.toUpperCase() }).save();
-    }
-    res.send("OK");
-  } catch (err) { res.status(500).send(err.message); }
-});
-
-// API TRUY VẤN THỐNG KÊ (TRẢ VỀ SỐ 0 NẾU KHÔNG CÓ)
+// API Thống kê theo ngày (mặc định là hôm nay)
 app.get("/api/door/stats", async (req, res) => {
-  try {
-    const queryDate = req.query.date;
-    let start = queryDate ? new Date(queryDate) : new Date();
-    start.setHours(0, 0, 0, 0);
-    const end = new Date(start);
-    end.setHours(23, 59, 59, 999);
+    try {
+        const queryDate = req.query.date; // Lấy ngày từ trình duyệt gửi lên
+        let start = new Date();
+        
+        if (queryDate) {
+            start = new Date(queryDate);
+        }
+        
+        start.setHours(0, 0, 0, 0);
+        const end = new Date(start);
+        end.setHours(23, 59, 59, 999);
 
-    const logs = await Log.find({ timestamp: { $gte: start, $lte: end } });
-    
-    res.json({
-      success: true,
-      stats: {
-        opens: logs.filter(l => l.state === "OPEN").length,
-        closes: logs.filter(l => l.state === "CLOSE").length
-      }
-    });
-  } catch (err) { res.status(500).json({ success: false }); }
+        const logs = await Log.find({ 
+            timestamp: { $gte: start, $lte: end } 
+        });
+
+        const opens = logs.filter(l => l.state === "OPEN").length;
+        const closes = logs.filter(l => l.state === "CLOSE").length;
+
+        res.json({ 
+            success: true, 
+            stats: { 
+                opens: opens > 0 ? opens : "Không có", 
+                closes: closes > 0 ? closes : "Không có" 
+            } 
+        });
+    } catch (err) {
+        res.status(500).json({ success: false, error: err.message });
+    }
 });
-
-// PHỤC VỤ GIAO DIỆN WEB
-app.get("/", (req, res) => {
-  res.sendFile(path.join(__dirname, "index.html"));
-});
-
-// DÀNH CHO VERCEL
-module.exports = app;
-
-if (process.env.NODE_ENV !== 'production') {
-  app.listen(port, () => console.log(`Server running on port ${port}`));
-}
