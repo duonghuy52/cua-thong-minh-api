@@ -12,7 +12,7 @@ app.use(express.json());
 // KẾT NỐI MONGODB
 mongoose.connect(process.env.MONGODB_URI)
   .then(() => console.log("✅ MongoDB Connected"))
-  .catch(err => console.log(err));
+  .catch(err => console.log("❌ MongoDB Error:", err));
 
 const Log = mongoose.model("DoorLog", new mongoose.Schema({
   state: String,
@@ -22,6 +22,7 @@ const Log = mongoose.model("DoorLog", new mongoose.Schema({
 // API NHẬN TRẠNG THÁI TỪ ESP32
 app.post("/api/door/status", async (req, res) => {
   const { state } = req.body;
+  if (!state) return res.status(400).send("No state");
   try {
     const lastLog = await Log.findOne().sort({ timestamp: -1 });
     if (!lastLog || lastLog.state !== state.toUpperCase()) {
@@ -31,7 +32,7 @@ app.post("/api/door/status", async (req, res) => {
   } catch (err) { res.status(500).send(err.message); }
 });
 
-// API TRUY VẤN THỐNG KÊ (MẶC ĐỊNH HIỆN SỐ 0)
+// API TRUY VẤN THỐNG KÊ (TRẢ VỀ SỐ 0 NẾU TRỐNG)
 app.get("/api/door/stats", async (req, res) => {
   try {
     const queryDate = req.query.date;
@@ -41,6 +42,8 @@ app.get("/api/door/stats", async (req, res) => {
     end.setHours(23, 59, 59, 999);
 
     const logs = await Log.find({ timestamp: { $gte: start, $lte: end } });
+    
+    // Trả về số lần đóng/mở thực tế
     res.json({
       success: true,
       stats: {
@@ -56,4 +59,6 @@ app.get("/", (req, res) => {
   res.sendFile(path.join(__dirname, "index.html"));
 });
 
+// Export app để Vercel nhận diện 
+module.exports = app;
 app.listen(port);
