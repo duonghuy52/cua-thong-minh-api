@@ -9,9 +9,8 @@ app.use(cors());
 app.use(express.json());
 
 /* ================== MONGODB ================== */
-/* THAY URI BẰNG CỦA BẠN */
 mongoose.connect(
-  "mongodb+srv://huy98516:dnqh98516@smartdoorcluster.hru0elc.mongodb.net/?appName=SmartDoorCluster",
+  "mongodb+srv://huy98516:dnqh98516@smartdoorcluster.hru0elc.mongodb.net/smart_door?retryWrites=true&w=majority",
   {
     useNewUrlParser: true,
     useUnifiedTopology: true,
