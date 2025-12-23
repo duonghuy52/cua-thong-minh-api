@@ -14,17 +14,27 @@
         <div class="h-1 w-20 bg-blue-600 mx-auto mt-2 rounded-full"></div>
     </header>
 
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto w-full mb-12">
-        <button onclick="sendCmd('OPEN')" class="group bg-white hover:bg-emerald-50 border-2 border-emerald-500 active:scale-95 transition-all p-12 rounded-[40px] shadow-xl flex flex-col items-center">
-            <span class="text-6xl mb-4 group-hover:rotate-12 transition-transform">🔓</span>
-            <span class="text-3xl font-black text-emerald-600">OPEN</span>
+    <!-- ========== NÚT ĐIỀU KHIỂN + TRẠNG THÁI ========== -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-4xl mx-auto w-full mb-12">
+        <button onclick="sendCmd('OPEN')" class="group bg-white hover:bg-emerald-50 border-2 border-emerald-500 active:scale-95 transition-all p-8 rounded-[24px] shadow-xl flex flex-col items-center">
+            <span class="text-5xl mb-2 group-hover:rotate-12 transition-transform">🔓</span>
+            <span class="text-2xl font-black text-emerald-600">OPEN</span>
         </button>
-        <button onclick="sendCmd('CLOSE')" class="group bg-white hover:bg-rose-50 border-2 border-rose-500 active:scale-95 transition-all p-12 rounded-[40px] shadow-xl flex flex-col items-center">
-            <span class="text-6xl mb-4 group-hover:-rotate-12 transition-transform">🔒</span>
-            <span class="text-3xl font-black text-rose-600">CLOSE</span>
+        <button onclick="sendCmd('CLOSE')" class="group bg-white hover:bg-rose-50 border-2 border-rose-500 active:scale-95 transition-all p-8 rounded-[24px] shadow-xl flex flex-col items-center">
+            <span class="text-5xl mb-2 group-hover:-rotate-12 transition-transform">🔒</span>
+            <span class="text-2xl font-black text-rose-600">CLOSE</span>
         </button>
+
+        <!-- TRẠNG THÁI CỬA (Realtime) -->
+        <div id="doorStatusCard" class="bg-white p-6 rounded-[24px] shadow-xl border border-gray-100 flex flex-col items-center justify-center">
+            <div id="doorEmoji" class="text-5xl mb-2">🔒</div>
+            <div class="text-sm text-gray-500 mb-2">Trạng thái cửa</div>
+            <div id="doorStatusText" class="text-2xl font-black text-rose-600">Đóng</div>
+            <div id="lastUpdate" class="text-xs text-gray-400 mt-2">--</div>
+        </div>
     </div>
 
+    <!-- ========== THỐNG KÊ ========== -->
     <div class="max-w-4xl mx-auto w-full bg-white p-8 rounded-[40px] shadow-2xl border border-gray-100">
         <div class="flex flex-col md:flex-row justify-between items-center mb-8 gap-4">
             <h2 class="text-2xl font-black text-gray-700 uppercase tracking-widest italic">📊 Thống kê dữ liệu</h2>
@@ -50,14 +60,58 @@
         // Thiết lập ngày mặc định là hôm nay
         document.getElementById('datePicker').valueAsDate = new Date();
 
+        // Kết nối MQTT qua WebSocket (HiveMQ)
         const client = mqtt.connect('wss://broker.hivemq.com:8884/mqtt');
-        
+
+        // KHI KẾT NỐI THÀNH CÔNG, SUBSCRIBE topic trạng thái
+        client.on('connect', function () {
+            console.log('MQTT connected');
+            client.subscribe('door/state', function (err) {
+                if (!err) console.log('Subscribed to door/state');
+            });
+        });
+
+        // XỬ LÝ TIN NHẮN ĐẾN
+        client.on('message', function (topic, message) {
+            // message là Buffer
+            const msg = message.toString();
+            console.log('MQTT message', topic, msg);
+
+            if (topic === 'door/state') {
+                updateDoorState(msg);
+            }
+        });
+
+        // Hàm gửi lệnh
         function sendCmd(cmd) {
             client.publish('door/command', cmd);
             const status = cmd === 'OPEN' ? 'Mở' : 'Đóng';
             console.log("Đã gửi lệnh: " + status);
         }
 
+        // Cập nhật UI trạng thái cửa
+        function updateDoorState(state) {
+            const textEl = document.getElementById('doorStatusText');
+            const emojiEl = document.getElementById('doorEmoji');
+            const lastEl = document.getElementById('lastUpdate');
+            if (state === 'OPEN') {
+                textEl.innerText = 'Mở';
+                textEl.className = 'text-2xl font-black text-emerald-600';
+                emojiEl.innerText = '🔓';
+            } else if (state === 'CLOSE' || state === 'CLOSED' || state === 'CLOSE') {
+                textEl.innerText = 'Đóng';
+                textEl.className = 'text-2xl font-black text-rose-600';
+                emojiEl.innerText = '🔒';
+            } else {
+                textEl.innerText = state;
+                textEl.className = 'text-2xl font-black text-gray-700';
+                emojiEl.innerText = '❓';
+            }
+            const now = new Date();
+            lastEl.innerText = 'Cập nhật: ' + now.toLocaleString();
+        }
+
+        // Hàm lấy thống kê (giữ nguyên)
         async function getStats() {
             const selectedDate = document.getElementById('datePicker').value;
             const res = await fetch(`/api/door/stats?date=${selectedDate}`);
