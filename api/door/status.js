@@ -21,17 +21,28 @@ const LogSchema = new mongoose.Schema({
 const Log = mongoose.models.Log || mongoose.model("Log", LogSchema);
 
 export default async function handler(req, res) {
-  if (req.method !== "POST") {
-    return res.status(405).json({ message: "Method not allowed" });
+
+  // ===== POST: ESP32 gửi trạng thái =====
+  if (req.method === "POST") {
+    const { state } = req.body;
+
+    if (!state || !["OPEN", "CLOSE"].includes(state)) {
+      return res.status(400).json({ message: "Invalid state" });
+    }
+
+    await Log.create({ state });
+
+    return res.status(200).json({ success: true });
   }
 
-  const { state } = req.body;
+  // ===== GET: WEB lấy trạng thái mới nhất =====
+  if (req.method === "GET") {
+    const last = await Log.findOne().sort({ timestamp: -1 });
 
-  if (!state || !["OPEN", "CLOSE"].includes(state)) {
-    return res.status(400).json({ message: "Invalid state" });
+    return res.status(200).json({
+      state: last ? last.state : "UNKNOWN",
+    });
   }
 
-  await Log.create({ state });
-
-  res.status(200).json({ success: true, state });
+  res.status(405).end();
 }
